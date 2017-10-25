@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<modification>
+  <name>Validacao Suplementacao</name>
+  <id>ValidacaoSuplementacao</id>
+  <ecidade-version>2.3.36</ecidade-version>
+
+  <file path='model/orcamento/suplementacao/Suplementacao.model.php'>
+    <operation>
+      <search regex="true"><![CDATA[(public\s*function\s*processar\s*\(.*\) \{)]]></search>
+      <add>
+        <![CDATA[$1
+
+    /* 
+     * plugin ValidacaoSuplementacao
+     * Verificamos se existe mais de uma fonte de recurso para as dotações ou receitas lançadas.
+     */
+    $sSqlValidaRecurso = " select count( distinct recurso )
+                             from ( select o58_codigo as recurso
+                                      from orcsuplem
+                                           inner join orcsuplemval on o46_codsup = o47_codsup
+                                           inner join orcdotacao   on o58_coddot = o47_coddot
+                                                                  and o58_anousu = o47_anousu
+                                                                  and o58_instit = o46_instit
+                                      where o46_codsup = {$this->getCodigo()}
+                                     union
+                                    select o70_codigo as recurso
+                                      from orcsuplem
+                                           inner join orcsuplemrec on o85_codsup = o46_codsup
+                                           inner join orcreceita   on o70_anousu = o85_anousu
+                                                                  and o70_codrec = o85_codrec
+                                                                  and o70_instit = o46_instit
+                                     where o46_codsup = {$this->getCodigo()} ) as dados
+                           having count( distinct recurso ) > 1";
+    $rsValidaRecurso = db_query($sSqlValidaRecurso);
+    if (pg_num_rows($rsValidaRecurso) > 0) {
+        throw new Exception("Suplementação não pode ser processada, foram encontradas fontes de recurso diferentes.");
+    }
+    /*
+     * Fim validação
+     */ 
+     
+    ]]></add>
+    </operation>
+ </file>
+    
+</modification>
